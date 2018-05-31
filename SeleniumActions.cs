@@ -20,10 +20,11 @@ namespace TestFrameWork.TestFramework
         public static By Str2 { get; private set; }
         public static By Str3 { get; private set; }
 
-        static ILog log = LogManager.GetLogger(typeof(SeleniumActions));       
-
+        static ILog log = LogManager.GetLogger(typeof(SeleniumActions));
+       
         public static bool RunTest(By str, int wait, string elem, IWebDriver driver)
         {
+            GlobalContext.Properties["LogName"] = Config.LogFile;
             bool Rtn = false;
 
             if (!ObjectDisplayedOK(str, wait, driver))
@@ -49,7 +50,7 @@ namespace TestFrameWork.TestFramework
                 int ct = 0;
                 while (ct <= timer)
                 {
-                    if (ObjectIsClickable(Str, timer, driver))
+                    if (ObjectIsEnabled(Str, timer, driver))
                     {
                         TestRun.Driver.FindElement(Str).Click();
                         
@@ -78,7 +79,7 @@ namespace TestFrameWork.TestFramework
                 int ct = 0;
                 while (ct <= timer)
                 {
-                    if (ObjectIsClickable(Str, timer, driver))
+                    if (ObjectIsEnabled(Str, timer, driver))
                     {
                         IJavaScriptExecutor js = (IJavaScriptExecutor)driver;
                         js.ExecuteScript("document.body.style.zoom='100%';");
@@ -111,7 +112,7 @@ namespace TestFrameWork.TestFramework
                 int ct = 0;
                 while (ct <= timer)
                 {
-                    if (ObjectIsClickable(Str, timer, driver))
+                    if (ObjectIsEnabled(Str, timer, driver))
                     {
                         Actions builder = new Actions(driver);
                         IWebElement element = driver.FindElement(Str);
@@ -141,7 +142,7 @@ namespace TestFrameWork.TestFramework
                 int ct = 0;
                 while (ct <= timer)
                 {
-                    if (ObjectIsClickable(Str, timer, driver))
+                    if (ObjectIsEnabled(Str, timer, driver))
                     {
                         driver.FindElement(Str).Submit();
                         Rtn = true;
@@ -172,7 +173,7 @@ namespace TestFrameWork.TestFramework
                 int ct = 0;
                 while (ct <= timer)
                 {
-                    if (ObjectIsClickable(Str, timer, driver))
+                    if (ObjectIsEnabled(Str, timer, driver))
                     {
                         Rtn = driver.FindElement(Str).Text;
                         return Rtn;
@@ -196,23 +197,55 @@ namespace TestFrameWork.TestFramework
             bool Rtn = false;
             try
             {
-
+                bool Notselected = false;
                 int ct = 0;
-                while (ct <= timer)
-                {
-                    if (ObjectIsClickable(Str, timer, driver))
-                    {
-                        IWebElement dropdown = driver.FindElement(Str);
-                        SelectElement opt = new SelectElement(dropdown);
-                        string[] vals = val.Split('=');
-                        vals[1] = vals[1].Trim('"');
-                        vals[1] = vals[1].Trim().Trim('"');
+                string itemText = "";
 
-                        if (vals[0] == "Text")
-                            opt.SelectByText(vals[1]);
-                        if (vals[0] == "Value")
-                            opt.SelectByValue(vals[1]);
-                        return true;
+                while (ct <= timer && !Notselected)
+                {
+                    if (ObjectIsEnabled(Str, timer, driver))
+
+                    {
+                        IWebElement items = driver.FindElement(Str);
+                        string[] vals = val.Split(':');
+                        vals[0] = vals[0].Trim('"');
+                        vals[0] = vals[0].Trim().Trim('"');
+                        vals[2] = vals[2].Trim('"');
+                        vals[2] = vals[2].Trim().Trim('"');
+
+                        int ItemCt = items.FindElements(By.TagName(vals[0])).Count;
+                        
+                        if (vals[1] != "Text" && ItemCt < Convert.ToInt32(vals[2]) + 1)
+                        {
+                            log.Error("selection value " + Convert.ToInt32(vals[2]) + "  +1 greater than number in list " + ItemCt);
+                            return false;
+                        }
+                        
+                        foreach (IWebElement item in items.FindElements(By.TagName(vals[0])))
+                        {
+                            itemText = item.Text;
+                            if (vals[1] == "Value" && ct == Convert.ToInt32(vals[2]))
+                            {
+                                log.Info(ItemCt + " items in list.");
+                                item.Click();
+                                log.Info("Item " + vals[2] + " selected.");
+                                Notselected = true;
+                                Rtn = true;
+                                break;
+                            }
+                            if (vals[1] == "Text" && item.Text.Contains(vals[2]))
+                            {
+                                log.Info(ItemCt + " items in list.");
+                                item.Click();
+                                log.Info("Item containing '" + vals[2] + "' selected.");
+                                Notselected = true;
+                                Rtn = true;
+                                break;
+                            }
+                            
+                        }
+                                            
+                                             
                     }
                     Thread.Sleep(1);
                     ct++;
@@ -222,7 +255,7 @@ namespace TestFrameWork.TestFramework
                         return false;
                     }
                 }
-
+                RunTesting.UpdateStepValues(TestRun.TestStep, "TextValue", itemText);
             }
             catch (Exception Exp) { log.Error(Exp); Rtn = false; }
 
@@ -238,7 +271,7 @@ namespace TestFrameWork.TestFramework
                 int ct = 0;
                 while (ct <= timer)
                 {
-                    if (ObjectIsClickable(Str, timer, driver))
+                    if (ObjectIsEnabled(Str, timer, driver))
                     {
                         IWebElement Tbl = driver.FindElement(Str);
                         string[] vals = val.Split('¦');
@@ -285,68 +318,65 @@ namespace TestFrameWork.TestFramework
         }
         public static bool SendKeys(By Str, IWebDriver driver, int timer, string val)
         {
-            bool Rtn = false;
-            try
+            
+            int ct = 0;
+            while (ct <= timer)
             {
-
-                int ct = 0;
-                while (ct <= timer)
+                try
                 {
-                    if (ObjectIsClickable(Str, timer, driver))
-                    {
-                        driver.FindElement(Str).SendKeys(val);
-                        Rtn = true;
-                        return Rtn;
-                    }
-                    Thread.Sleep(1);
-                    ct++;
+                    driver.FindElement(Str).SendKeys(val);
+                    return true;
                 }
-            }
-            catch (Exception Exp) { log.Error(Exp); return false; }
+                catch (Exception) { }
 
-            return Rtn;
+                if (ct > timer)
+                {
+                    log.Error("Error sending keys to object " + Str);
+                    return false;
+                }
+                Thread.Sleep(1);
+                ct++;
+            }
+            return true;
         }
+          
+                
         public static bool ObjectDisplayedOK(By Str, int wait, IWebDriver driver)
         {
             bool Rtn = false;
             int secs = 0;
-            try
+            string ExceptionLog = "";
+            
+            while (secs <= wait)
             {
-                while (secs <= wait)
-                {
-                    // var elem = wait.Until(ExpectedConditions.ElementToBeClickable(Str));
-                    if (driver.FindElement(Str).Displayed && driver.FindElement(Str).Enabled)
+                    try
                     {
-                        Rtn = true;
-                        return Rtn;
+                        // var elem = wait.Until(ExpectedConditions.ElementToBeClickable(Str));
+                        if (driver.FindElement(Str).Displayed && driver.FindElement(Str).Enabled)
+                        {
+                            Rtn = true;
+                            return Rtn;
+                        }
+                            
                     }
-                    if (secs > wait)
+                        
+                    catch (Exception exp)
                     {
-                        log.Error("Timeout for object : " + Str + "  : Timer value = " + wait);
-                        return Rtn;
+                        ExceptionLog = exp.ToString();
+                        continue;
                     }
-                    Thread.Sleep(1);
-                    secs++;
-                }
-
+                Thread.Sleep(1);
+                secs++;
+                   
             }
-
-            catch (InvalidSelectorException x)
+            
+            if (secs > wait)
             {
-                log.Debug("Selector exception:   " + x);
+                log.Error("Timeout for object : " + Str + "  : Timer value = " + wait);
+                log.Debug(ExceptionLog);
+               
             }
-            catch (NoSuchElementException Ne)
-            {
-                log.Debug("Web exception:   " + Ne);
-            }
-
-            catch (Exception Exp)
-            {
-                log.Debug(Exp);
-            }
-
-            return Rtn;
-
+            return Rtn;               
         }
         public static IWebDriver GetDriver(string Browser)
         {
@@ -358,24 +388,32 @@ namespace TestFrameWork.TestFramework
                 {
                     case "Firefox":
                         driver = new FirefoxDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
+                        //driver.Manage().Window.Maximize();
                         break;
                     case "Chrome":
                         driver = new ChromeDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
-                        //driver.Manage().Window.Maximize();
+                        driver.Manage().Window.Maximize();
                         break;
                     case "IE":
                         driver = new InternetExplorerDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));
                         driver.Manage().Window.Maximize();
                         break;
                     case "Edge":
-                        driver = new EdgeDriver();
-                        driver.Manage().Window.Maximize();
+                        // driver = new EdgeDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));  // Only valid under Windows 10
+                        // driver.Manage().Window.Maximize();
+                        break;
+                    case "Phantom":
+                    //    driver = new PhantomJSDriver();   No longer supported by Selenium
+                        break;
+                    case "Safari":
+                        //    driver = new SafariDriver(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location));  Download Safari for Windows needed 
+                        // driver.Manage().Window.Maximize();
                         break;
 
                 }
             }
 
-            driver.Manage().Window.Maximize();
+            //driver.Manage().Window.Maximize();
 
             return driver;
         }
@@ -414,7 +452,7 @@ namespace TestFrameWork.TestFramework
          
             return Str;
         }
-        public static bool ObjectIsClickable(By Str, int wait, IWebDriver driver)
+        public static bool ObjectIsEnabled(By Str, int wait, IWebDriver driver)
         {
             bool Rtn = false;
             int secs = 0;
@@ -426,8 +464,7 @@ namespace TestFrameWork.TestFramework
                     // var elem = wait.Until(ExpectedConditions.ElementToBeClickable(Str));
                     if (driver.FindElement(Str).Enabled && driver.FindElement(Str).Displayed)
                     {
-                        Rtn = true;
-                        return Rtn;
+                        return true;
                     }
                     if (secs > wait)
                     {

@@ -27,6 +27,7 @@ namespace TestFrameWork.TestFramework
         public static string Act { get; set; }
         public static string Val { get; set; }
         public static string Exp { get; set; }
+        public static string ExpectedResult { get; set; }
         public static int Pause { get; set; }
         public static int WaitParm { get; set; }
         public static string OldTest { get; set; }
@@ -49,7 +50,7 @@ namespace TestFrameWork.TestFramework
             if (RunTesting.Results.ContainsKey(Dep) && RunTesting.Results[Dep] == false)
             {
                 log.Warn("Test Step '" + TestStep + "' skipped as dependent step '" + Dep + "' failed.");
-                return true;
+                return false;
             }
             Type = v[2];
             Page = v[3];
@@ -64,12 +65,13 @@ namespace TestFrameWork.TestFramework
             Act = v[11];
             Val = v[12];
             Exp = v[13];
-            Pause = Config.Time;
+            WaitParm = Config.Time;
             if (v[14] != null && v[14] != "")
-                WaitParm = Convert.ToInt32(v[14]);
+                Pause = Convert.ToInt32(v[14]);
             APIuser = v[15];
             APIpass = v[16];
-            
+            ExpectedResult = v[17];
+                        
             if (v[0].Substring(0, 1) == "!")
             {
                 log.Info("Test Step" +
